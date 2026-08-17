@@ -1,0 +1,34 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.*
+
+# Application Logs
+agentverse_backend/logs/
+*.log
+
+# Python Cache & Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Local Databases (if any)
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / System specific files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+AgentVerse_Phase0_TaskList.docx
+test_groq.py
