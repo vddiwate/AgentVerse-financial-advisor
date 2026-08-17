@@ -1,6 +1,6 @@
 # AgentVerse
 
-**AI-Powered Financial Portfolio Advisor** — a multi-agent system built with LangGraph, FastAPI, and RAG.
+**AI-Powered Financial Portfolio Advisor** — a multi-agent system built with LangGraph,Langchain,FastAPI,and RAG.
 
 AgentVerse gives users a single conversational assistant that understands their live portfolio, current market news, and their own uploaded financial documents — instead of making them piece all of that together manually across separate apps.
 
@@ -50,13 +50,14 @@ See `AgentVerse_LLD_Document.pdf` in this repo for the full architecture, sequen
 | Frontend | Streamlit + Plotly |
 | Backend API | FastAPI + Uvicorn |
 | Orchestration | LangGraph + LangChain |
-| LLM (reasoning) | OpenAI API |
+| LLM (reasoning) | OpenAI / Groq API (`llama-3.3-70b-versatile`) |
 | Embeddings | Hugging Face sentence-transformers (local) |
 | Vector Database | ChromaDB (local, persistent) |
 | Relational Database | PostgreSQL + SQLAlchemy ORM |
 | Live Stock Data | Finnhub API |
 | Live News Data | NewsAPI.org |
 | Caching | cachetools (in-memory TTL cache) |
+| Logging | Loguru (Structured async-safe logging, 2-day retention) |
 
 ---
 
@@ -64,25 +65,30 @@ See `AgentVerse_LLD_Document.pdf` in this repo for the full architecture, sequen
 
 ```
 agentverse/
-├── backend/
-│   ├── main.py                 # FastAPI app entrypoint
-│   ├── config.py                # env vars, API keys, constants
-│   ├── api/                     # route handlers
-│   ├── agents/                  # LangGraph graph + agent nodes
-│   ├── tools/                   # external API wrappers + caching
-│   ├── db/                      # SQLAlchemy models, session, CRUD
-│   ├── schemas/                 # Pydantic models
-│   ├── memory/                  # short-term memory logic
-│   ├── vectorstore/             # ChromaDB client + ingestion
-│   └── requirements.txt
-├── frontend/
-│   ├── app.py                   # Streamlit entrypoint
-│   ├── components/               # chat, charts, news, advisory panels
-│   └── requirements.txt
-├── data/
-│   └── chroma_store/             # ChromaDB persistent storage
-├── docker-compose.yml            # PostgreSQL + backend + frontend
-├── .env.example
+├── agentverse_backend/          # Main Backend package
+│   ├── main.py                  # FastAPI app entrypoint
+│   ├── config.py                # Pydantic Settings env loader
+│   ├── api/                     # versioned endpoints
+│   ├── agents/                  # LangGraph orchestrator & agent nodes
+│   ├── registry/                # Decorator-based registries (agent, tool, prompt)
+│   ├── tools/                   # External API tools & mocks
+│   ├── services/                # Business logic layer
+│   ├── utils/                   # Shared utilities (logger)
+│   ├── schemas/                 # Pydantic requests/response validation
+│   ├── db/                      # Database configuration
+│   │   ├── database.py          # SQLAlchemy engine and session dependency
+│   │   ├── models/              # Modular ORM Models package (agent, tool, prompt, etc.)
+│   │   ├── init_db.py           # DB tables initialization script
+│   │   ├── seed_data.json       # JSON file holding dynamic seed data
+│   │   └── seed.py              # Seeding engine script
+│   └── logs/                    # Automated local logs directory
+├── alembic/                     # Alembic database migration scripts
+│   ├── env.py                   # Alembic dynamic configuration
+│   └── versions/                # Migration history scripts
+├── alembic.ini                  # Alembic configurations
+├── requirements.txt             # Project dependencies checklist
+├── .env                         # Environment credentials (excluded from git)
+├── .gitignore                   # Exclusions list for git commits
 └── README.md
 ```
 
@@ -93,45 +99,52 @@ agentverse/
 ### Prerequisites
 - Python 3.10+
 - PostgreSQL (local install or via Docker)
-- API keys: OpenAI, Finnhub, NewsAPI.org (all have free tiers)
+- API keys: Groq (or OpenAI), Finnhub, NewsAPI.org (all have free tiers)
 
 ### 1. Clone and set up environment variables
 ```bash
 git clone <repo-url>
-cd agentverse
-cp .env.example .env
-# fill in: DATABASE_URL, OPENAI_API_KEY, FINNHUB_API_KEY, NEWSAPI_KEY
+cd AgentVerse
+# create .env in the root and fill in database configurations
+# e.g.:
+# GROQ_API_KEY=your_groq_api_key
+# DB_USER=postgres
+# DB_PASSWORD=your_password
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=agentverse
 ```
 
-### 2. Backend setup
+### 2. Backend Environment Setup
 ```bash
-cd backend
+# Initialize virtual environment
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows (Powershell): .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# Run DB migrations / create tables
-python -m db.init_db
-
-uvicorn main:app --reload --port 8000
 ```
 
-### 3. Frontend setup
+### 3. Database Migration & Initialization
+We use **Alembic** to track database schema migrations and run PostgreSQL table setups:
 ```bash
-cd frontend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# 1. Verify and apply migrations
+.\venv\Scripts\alembic upgrade head
 
-streamlit run app.py
+# 2. (Optional) Run seeding engine to populate default tools, agents & prompts
+.\venv\Scripts\python agentverse_backend/db/seed.py
 ```
 
-### 4. (Optional) Run everything with Docker
+### 4. Run Backend Server
 ```bash
-docker-compose up --build
+.\venv\Scripts\uvicorn agentverse_backend.main:app --reload --port 8000
 ```
+The API will be available at `http://localhost:8000` (interactive docs at `http://localhost:8000/docs`).
 
-The API will be available at `http://localhost:8000` (docs at `/docs`) and the dashboard at `http://localhost:8501`.
+---
+
+## Logging & Audits
+Structured application logs are captured asynchronously inside `agentverse_backend/logs/agentverse.log` using `loguru`.
+* Logs are rotated **daily at midnight (`00:00`)**.
+* Keep-alive history limit is configured to exactly **2 days**, automatically purging older logs to maintain clean local storage.
 
 ---
 
@@ -139,30 +152,28 @@ The API will be available at `http://localhost:8000` (docs at `/docs`) and the d
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/v1/chat/{session_id}/query` | Main endpoint — runs the full LangGraph multi-agent pipeline |
-| GET | `/api/v1/portfolio/{user_id}/performance` | Live portfolio performance |
-| POST | `/api/v1/documents/{user_id}/upload` | Upload a financial document for RAG |
+| POST | `/api/v1/chat/query` | Main endpoint — runs the full LangGraph multi-agent pipeline |
 | GET | `/api/v1/health` | Liveness check |
-
-Full endpoint list, request/response schemas, and database schema are documented in `AgentVerse_LLD_Document.pdf`.
 
 ---
 
 ## Roadmap
 
-- [x] Core multi-agent orchestration (LangGraph)
-- [x] RAG pipeline over personal documents
-- [x] Live portfolio + news integration
-- [x] Short-term conversational memory
+- [x] Modular database schemas (PostgreSQL)
+- [x] Dynamic database-driven agent registries
+- [x] Alembic migration setup
+- [x] Structured logger with daily log-retention
+- [ ] Core multi-agent orchestration (LangGraph)
+- [ ] RAG pipeline over personal documents
+- [ ] Live portfolio + news integration
 - [ ] Streamlit dashboard (charts, chat, advisory panel)
 - [ ] Docker Compose one-command startup
-- [ ] Evaluation suite for retrieval accuracy and agent routing
 
 ---
 
 ## Status
 
-Actively in development. Currently built and tested as a local, single-user system with production-grade architecture patterns (async APIs, structured state, caching, persistent memory).
+Actively in development. Currently implementing the core LangGraph skeleton and mock tools in Phase 0.
 
 ---
 
