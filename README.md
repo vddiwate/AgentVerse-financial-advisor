@@ -38,7 +38,7 @@ See `AgentVerse_LLD_Document.pdf` in this repo for the full architecture, sequen
 | Supervisor / Router | Classifies intent, loads short-term memory | `classify_intent()` |
 | Portfolio Analyzer | Portfolio value, gains/losses, sector exposure | `get_stock_price()`, `calculate_portfolio_returns()` |
 | Market News | Recent news relevant to holdings | `fetch_latest_news()` |
-| Document (RAG) | Answers grounded in the user's own documents | `search_personal_documents()` |
+| FinanceDocumentAgent | Answers grounded in the user's own documents | `search_personal_documents()` |
 | Advisory | Final synthesis into one recommendation | `generate_recommendation()` |
 
 ---

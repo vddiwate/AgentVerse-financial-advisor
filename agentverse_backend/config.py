@@ -29,4 +29,13 @@ class Settings(BaseSettings):
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
-settings = Settings()
+try:
+    settings = Settings()
+    # Validate critical variables early on startup
+    if not settings.GROQ_API_KEY:
+        from agentverse_backend.utils.logger import logger
+        logger.warning("GROQ_API_KEY is not set in environment or .env file. LLM agents will fail to execute.")
+except Exception as e:
+    from agentverse_backend.utils.logger import logger
+    logger.critical(f"Settings initialization failed: {e}")
+    raise e
