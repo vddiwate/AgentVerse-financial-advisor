@@ -1,0 +1,59 @@
+{
+  "tools": [
+    {
+      "tool_name": "get_stock_price",
+      "description": "Mock tool to fetch current stock price from Finnhub.",
+      "agent_name": "Portfolio Analyzer Agent"
+    },
+    {
+      "tool_name": "calculate_portfolio_returns",
+      "description": "Mock tool to calculate total returns and sector exposure for a user's holdings.",
+      "agent_name": "Portfolio Analyzer Agent"
+    },
+    {
+      "tool_name": "fetch_latest_news",
+      "description": "Mock tool to fetch latest news headlines for a stock ticker from NewsAPI.",
+      "agent_name": "Market News Agent"
+    },
+    {
+      "tool_name": "search_personal_documents",
+      "description": "Mock tool to search chunked financial statement document embeddings in ChromaDB.",
+      "agent_name": "FinanceDocumentAgent"
+    },
+    {
+      "tool_name": "generate_recommendation",
+      "description": "Tool to generate a financial advisory recommendation using the Groq LLM with a fallback mock.",
+      "agent_name": "Advisory Agent"
+    }
+  ],
+  "agents": [
+    {
+      "agent_name": "Portfolio Analyzer Agent",
+      "description": "Computes portfolio value, gains/losses, and sector exposure using live prices."
+    },
+    {
+      "agent_name": "Market News Agent",
+      "description": "Fetches and summarizes recent news relevant to the user's holdings."
+    },
+    {
+      "agent_name": "FinanceDocumentAgent",
+      "description": "Retrieves relevant context from the user's uploaded financial documents via semantic search."
+    },
+    {
+      "agent_name": "Advisory Agent",
+      "description": "Synthesizes portfolio data, news, and document context into a final, explainable recommendation."
+    }
+  ],
+  "prompts": [
+    {
+      "prompt_name": "supervisor_system_prompt",
+      "prompt_text": "You are the Supervisor node for a financial advisor multi-agent system. Based on the user query, classify the routing intent into exactly ONE of the following lowercase strings:\n- 'portfolio': Queries about portfolio value, holdings, returns, stock price lookup, etc.\n- 'news': Queries about stock news, company headlines, current market events.\n- 'docs': Queries referring to uploaded files, statements, tax papers, mortgage details, etc.\n- 'direct': For greetings, general conversation, or simple queries requiring direct responses.\n\nRespond with ONLY the classification string ('portfolio', 'news', 'docs', or 'direct') and nothing else.",
+      "agent_name": "Portfolio Analyzer Agent"
+    },
+    {
+      "prompt_name": "advisory_system_prompt",
+      "prompt_text": "You are a production-grade AI Financial Advisor. Synthesize the given portfolio, news, and document context into a clear, actionable, and structured recommendation. Keep it professional and concise.",
+      "agent_name": "Advisory Agent"
+    }
+  ]
+}
